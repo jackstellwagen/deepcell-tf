@@ -68,13 +68,7 @@ class ImageNormalization2D(Layer):
                                          padding='SAME', data_format=data_format)
         return outputs
 
-    def _window_std_filter(self, inputs, epsilon=K.epsilon()):
-        c1 = self._average_filter(inputs)
-        c2 = self._average_filter(tf.square(inputs))
-        output = tf.sqrt(c2 - c1 * c1) + epsilon
-        return output
-    
-    def _all_std_filter(self, inputs, epsilon=K.epsilon()):
+    def _average(self, inputs):
         width = inputs.shape[2 if self.data_format == 'channels_first' else 1]
         height = inputs.shape[3 if self.data_format == 'channels_first' else 2]
 
@@ -88,6 +82,18 @@ class ImageNormalization2D(Layer):
         outputs = tf.nn.depthwise_conv2d(inputs, kernel, [1, 1, 1, 1],
                                          padding='SAME', data_format=data_format)
         return outputs
+
+    def _window_std_filter(self, inputs, epsilon=K.epsilon()):
+        c1 = self._average_filter(inputs)
+        c2 = self._average_filter(tf.square(inputs))
+        output = tf.sqrt(c2 - c1 * c1) + epsilon
+        return output
+    
+    def _all_std_filter(self, inputs, epsilon=K.epsilon()):
+        c1 = self._average(inputs)
+        c2 = self._average(tf.square(inputs))
+        output = tf.sqrt(c2 - c1 * c1) + epsilon
+        return output
 
     def _reduce_median(self, inputs, axes=None):
         # TODO: top_k cannot take None as batch dimension, and tf.rank cannot be iterated
@@ -108,8 +114,8 @@ class ImageNormalization2D(Layer):
             outputs = inputs
 
         elif self.norm_method == 'total_std':
-            outputs = inputs - self._average_filter(inputs)
-            outputs /= self._window_std_filter(outputs)
+            outputs = inputs - self._average(inputs)
+            outputs /= self._all_std_filter(outputs)
 
         elif self.norm_method == 'std':
             outputs = inputs - self._average_filter(inputs)
