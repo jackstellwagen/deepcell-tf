@@ -176,6 +176,7 @@ def train_model_conv(model,
                      dataset,
                      expt='',
                      test_size=.1,
+                     seed=None,
                      n_epoch=10,
                      batch_size=1,
                      num_gpus=None,
@@ -202,7 +203,7 @@ def train_model_conv(model,
     model_path = os.path.join(model_dir, '{}.h5'.format(model_name))
     loss_path = os.path.join(model_dir, '{}.npz'.format(model_name))
 
-    train_dict, test_dict = get_data(dataset, mode='conv', test_size=test_size)
+    train_dict, test_dict = get_data(dataset, mode='conv', test_size=test_size, seed=seed)
 
     n_classes = model.layers[-1].output_shape[1 if is_channels_first else -1]
     # the data, shuffled and split between train and test sets
@@ -338,8 +339,10 @@ def train_model_siamese(model=None, dataset=None, optimizer=None,
     training_data_file_name = os.path.join(direc_data, dataset + '.npz')
     todays_date = datetime.datetime.now().strftime('%Y-%m-%d')
 
-    file_name_save = os.path.join(direc_save, '{}_{}_{}_{}.h5'.format(todays_date, dataset, expt, it))
-    file_name_save_loss = os.path.join(direc_save, '{}_{}_{}_{}.npz'.format(todays_date, dataset, expt, it))
+    file_name_save = os.path.join(
+        direc_save, '{}_{}_{}_{}.h5'.format(todays_date, dataset, expt, it))
+    file_name_save_loss = os.path.join(
+        direc_save, '{}_{}_{}_{}.npz'.format(todays_date, dataset, expt, it))
 
     train_dict, test_dict = get_data(training_data_file_name, mode='siamese')
 
@@ -371,13 +374,15 @@ def train_model_siamese(model=None, dataset=None, optimizer=None,
     # this will do preprocessing and realtime data augmentation
     datagen = image_generators.SiameseDataGenerator(
         rotation_range=rotation_range,  # randomly rotate images by 0 to rotation_range degrees
-        shear_range=shear,  # randomly shear images in the range (radians , -shear_range to shear_range)
+        # randomly shear images in the range (radians , -shear_range to shear_range)
+        shear_range=shear,
         horizontal_flip=flip,  # randomly flip images
         vertical_flip=flip)  # randomly flip images
 
     datagen_val = image_generators.SiameseDataGenerator(
         rotation_range=0,  # randomly rotate images by 0 to rotation_range degrees
-        shear_range=0,  # randomly shear images in the range (radians , -shear_range to shear_range)
+        # randomly shear images in the range (radians , -shear_range to shear_range)
+        shear_range=0,
         horizontal_flip=0,  # randomly flip images
         vertical_flip=0)  # randomly flip images
 
