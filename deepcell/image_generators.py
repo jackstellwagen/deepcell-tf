@@ -710,7 +710,17 @@ class ImageFullyConvDataGenerator(ImageDataGenerator):
         # Nullify the transforms that don't affect `y`
         params['brightness'] = None
         params['channel_shift_intensity'] = None
+        # Change params to constant fill 0 for y
+        _interpolation_order = self.interpolation_order
+        self.interpolation_order = 0
+        _fill_mode = self.fill_mode
+        self.fill_mode = 'constant'
+        _cval = self.cval
+        self.cval = 0
         y = self.apply_transform(y, params)
+        self.interpolation_order = _interpolation_order
+        self.fill_mode = _fill_mode
+        self.cval = _cval
         return x, y
 
 
