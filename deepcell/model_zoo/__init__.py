@@ -23,46 +23,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Deepcell Utilities Module"""
+"""Deepcell Model Zoo Module"""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import warnings
+from deepcell.model_zoo.featurenet import bn_feature_net_2D
+from deepcell.model_zoo.featurenet import bn_feature_net_skip_2D
+from deepcell.model_zoo.featurenet import bn_feature_net_3D
+from deepcell.model_zoo.featurenet import bn_feature_net_skip_3D
 
-from deepcell.utils import data_utils
-from deepcell.utils import export_utils
-from deepcell.utils import io_utils
-from deepcell.utils import misc_utils
-from deepcell.utils import plot_utils
-from deepcell.utils import testing_utils
-from deepcell.utils import train_utils
-from deepcell.utils import transform_utils
-from deepcell.utils import retinanet_anchor_utils
+from deepcell.model_zoo.retinanet import RetinaNet
+from deepcell.model_zoo.retinanet import retinanet
+from deepcell.model_zoo.retinanet import retinanet_bbox
 
-try:
-    from deepcell.utils import compute_overlap
-except ImportError:
-    warnings.warn('To use `compute_overlap`, the C extensions must be built '
-                  'using `python setup.py build_ext --inplace`')
-
-# Globally-importable utils.
-from deepcell.utils.data_utils import get_data
-from deepcell.utils.data_utils import make_training_data
-from deepcell.utils.export_utils import export_model
-from deepcell.utils.io_utils import get_immediate_subdirs
-from deepcell.utils.io_utils import get_image
-from deepcell.utils.io_utils import nikon_getfiles
-from deepcell.utils.io_utils import get_image_sizes
-from deepcell.utils.io_utils import get_images_from_directory
-from deepcell.utils.misc_utils import sorted_nicely
-from deepcell.utils.train_utils import rate_scheduler
-from deepcell.utils.transform_utils import distance_transform_2d
-from deepcell.utils.transform_utils import distance_transform_3d
-from deepcell.utils.transform_utils import deepcell_transform
-
-del warnings
+from deepcell.model_zoo.maskrcnn import MaskRCNN
+from deepcell.model_zoo.maskrcnn import retinanet_mask
 
 del absolute_import
 del division

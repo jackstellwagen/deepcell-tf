@@ -47,11 +47,6 @@ from deepcell.layers import ReflectionPadding2D, ReflectionPadding3D
 from deepcell.layers import TensorProduct
 
 
-"""
-2D feature nets
-"""
-
-
 def bn_feature_net_2D(receptive_field=61,
                       input_shape=(256, 256, 1),
                       n_features=3,
@@ -228,31 +223,6 @@ def bn_feature_net_skip_2D(receptive_field=61,
             model = Model(inputs=inputs, outputs=model_outputs[1:])
 
     return model
-
-
-def bn_feature_net_21x21(**kwargs):
-    return bn_feature_net_2D(receptive_field=21, **kwargs)
-
-
-def bn_feature_net_31x31(**kwargs):
-    return bn_feature_net_2D(receptive_field=31, **kwargs)
-
-
-def bn_feature_net_41x41(**kwargs):
-    return bn_feature_net_2D(receptive_field=41, **kwargs)
-
-
-def bn_feature_net_61x61(**kwargs):
-    return bn_feature_net_2D(receptive_field=61, **kwargs)
-
-
-def bn_feature_net_81x81(**kwargs):
-    return bn_feature_net_2D(receptive_field=81, **kwargs)
-
-
-"""
-3D feature nets
-"""
 
 
 def bn_feature_net_3D(receptive_field=61,
@@ -438,23 +408,3 @@ def bn_feature_net_skip_3D(receptive_field=61,
             model = Model(inputs=inputs, outputs=model_outputs[1:])
 
     return model
-
-
-def bn_feature_net_21x21_3D(**kwargs):
-    return bn_feature_net_3D(receptive_field=21, **kwargs)
-
-
-def bn_feature_net_31x31_3D(**kwargs):
-    return bn_feature_net_3D(receptive_field=31, **kwargs)
-
-
-def bn_feature_net_41x41_3D(**kwargs):
-    return bn_feature_net_3D(receptive_field=41, **kwargs)
-
-
-def bn_feature_net_61x61_3D(**kwargs):
-    return bn_feature_net_3D(receptive_field=61, **kwargs)
-
-
-def bn_feature_net_81x81_3D(**kwargs):
-    return bn_feature_net_3D(receptive_field=81, **kwargs)
