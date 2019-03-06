@@ -29,54 +29,86 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import re
+
 from tensorflow.python.keras import backend as K
 from tensorflow.python.keras.models import Model
 from tensorflow.python.keras.layers import Conv2D
 from tensorflow.python.keras.layers import MaxPool2D
 from tensorflow.python.keras.layers import Softmax
 from tensorflow.python.keras.layers import Input, Concatenate, Add
-from tensorflow.python.keras.layers import Permute, Reshape
+from tensorflow.python.keras.layers import Reshape
 from tensorflow.python.keras.layers import Activation
 from tensorflow.python.keras.layers import UpSampling2D
 from tensorflow.python.keras.layers import BatchNormalization
-from tensorflow.python.keras.layers import Activation
 from tensorflow.python.keras import applications
 
 from deepcell.layers import UpsampleLike
 from deepcell.layers import TensorProduct, ImageNormalization2D
 
-import re
 
-def dc_block(x,n_filters):
+def dc_block(x, n_filters):
+    """Add a set of layers that make up one unit of the deepcell backbone
+
+    Args:
+        x (layer): Keras layer object to pass to backbone unit
+        n_filters (int): Number of filters to use for convolutional layers
+
+    Returns:
+        layer: Keras layer object
+    """
 
     # conv set 1
-    x = Conv2D(n_filters,(3,3),strides=(1,1),padding='same',data_format='channels_last')(x)
+    x = Conv2D(n_filters, (3, 3), strides=(1, 1), padding='same', data_format='channels_last')(x)
     x = BatchNormalization(axis=-1)(x)
     x = Activation('relu')(x)
     # conv set 2
-    x = Conv2D(n_filters,(3,3),strides=(1,1),padding='same',data_format='channels_last')(x)
+    x = Conv2D(n_filters, (3, 3), strides=(1, 1), padding='same', data_format='channels_last')(x)
     x = BatchNormalization(axis=-1)(x)
     x = Activation('relu')(x)
     # Final max pooling stage
-    x = MaxPool2D(pool_size=(2,2),data_format='channels_last')(x)
+    x = MaxPool2D(pool_size=(2, 2), data_format='channels_last')(x)
 
     return (x)
 
-def dc_model(input_tensor=None, weights=None, include_top=False, pooling=None, n_filters=32, n_dense=128, n_classes=3):
+
+def dc_model(input_tensor=None, n_filters=32):
+    """Construct the deepcell backbone with five convolutional units
+
+        input_tensor (tensor): Input tensor to specify input size
+        n_filters (int, optional): Defaults to 32. Number of filters for convolutionaal layers
+
+    Returns:
+        (backbone_names, backbone_features): List of backbone layers, list of backbone names
+    """
 
     # Build out backbone
-    c1 = dc_block(input_tensor,n_filters) # 1/2 64x64
-    c2 = dc_block(c1,n_filters) # 1/4 32x32
-    c3 = dc_block(c2,n_filters) # 1/8 16x16
-    c4 = dc_block(c3,n_filters) # 1/16 8x8
-    c5 = dc_block(c4,n_filters) # 1/32 4x4
+    c1 = dc_block(input_tensor, n_filters)  # 1/2 64x64
+    c2 = dc_block(c1, n_filters)  # 1/4 32x32
+    c3 = dc_block(c2, n_filters)  # 1/8 16x16
+    c4 = dc_block(c3, n_filters)  # 1/16 8x8
+    c5 = dc_block(c4, n_filters)  # 1/32 4x4
 
     backbone_features = [c1, c2, c3, c4, c5]
     backbone_names = ['C1', 'C2', 'C3', 'C4', 'C5']
 
     return backbone_names, backbone_features
 
+
 def get_pyramid_layer_outputs(backbone, inputs, **kwargs):
+    """Retrieves backbone layers from the specified backbones
+
+    Args:
+        backbone (str): Backbone type to use for the pyramid model. Options deepcell, resnet50
+        inputs (tensor): Keras tensor specifying inputs
+
+    Raises:
+        ValueError: Invalid value for `backbone`. Must be one of 'deepcell', 'resnet50'
+
+    Returns:
+        (backbone_names, backbone_features): List of backbone layers, list of backbone names
+    """
+
     _backbone = str(backbone).lower()
 
     resnet_backbones = {'resnet50'}
@@ -98,7 +130,24 @@ def get_pyramid_layer_outputs(backbone, inputs, **kwargs):
         raise ValueError('Invalid value for `backbone`. Must be one of: %s' %
                          ', '.join(backbones))
 
-def create_pyramid_level(backbone_input, upsamplelike_input=None, addition_input=None, level=5, feature_size=256):
+
+def create_pyramid_level(backbone_input,
+                         upsamplelike_input=None,
+                         addition_input=None,
+                         level=5,
+                         feature_size=256):
+    """Create a pyramid layer from a particular backbone input layer
+
+    Args:
+        backbone_input (layer): Backbone layer to use to create they pyramid laer
+        upsamplelike_input ([type], optional): Defaults to None. Input to use as a template for shape to upsample to
+        addition_input (layer, optional): Defaults to None. Layer to add to pyramid layer after conv and upsample
+        level (int, optional): Defaults to 5. Level to use in layer names
+        feature_size (int, optional): Defaults to 256. Number of filters for convolutional layer
+
+    Returns:
+        (pyramid final, pyramid upsample): Pyramid layer after processing, upsampled pyramid layer
+    """
 
     reduced_name = 'C' + str(level) + '_reduced'
     upsample_name = 'P' + str(level) + '_upsampled'
@@ -106,7 +155,8 @@ def create_pyramid_level(backbone_input, upsamplelike_input=None, addition_input
     final_name = 'P' + str(level)
 
     # Apply 1x1 conv to backbone layer
-    pyramid = Conv2D(feature_size, (1,1), strides=(1,1), padding='same', name=reduced_name)(backbone_input)
+    pyramid = Conv2D(feature_size, (1, 1), strides=(
+        1, 1), padding='same', name=reduced_name)(backbone_input)
 
     # Upsample pyramid input
     if upsamplelike_input is not None:
@@ -118,18 +168,20 @@ def create_pyramid_level(backbone_input, upsamplelike_input=None, addition_input
     if addition_input is not None:
         pyramid = Add(name=addition_name)([pyramid, addition_input])
 
-    pyramid_final = Conv2D(feature_size, (3,3), strides=(1,1), padding='same', name=final_name)(pyramid)
+    pyramid_final = Conv2D(feature_size, (3, 3), strides=(
+        1, 1), padding='same', name=final_name)(pyramid)
 
     return pyramid_final, pyramid_upsample
+
 
 def __create_pyramid_features(backbone_names, backbone_features, feature_size=256):
     """Creates the FPN layers on top of the backbone features.
 
     Args:
-        backbone_names: A list of all the backbone names in ascending order,
+        backbone_names (list): A list of all the backbone names in ascending order,
             e.g. [C0, C1, C2, C3, ...]
-        backbone_features: A list of all the backbone features
-        feature_size: The feature size to use for the resulting feature levels.
+        backbone_features (list): A list of all the backbone features
+        feature_size (int, optional): Defaults to 256. The feature size to use for the resulting feature levels.
 
     Returns:
         A list of feature levels [P3, P4, P5, P6, P7].
@@ -168,7 +220,7 @@ def __create_pyramid_features(backbone_names, backbone_features, feature_size=25
             addition_input = pyramid_upsamples[-1]
 
         pf, pu = create_pyramid_level(backbone_input, upsamplelike_input=upsamplelike_input,
-                        addition_input=addition_input, level=level)
+                                      addition_input=addition_input, level=level)
         pyramid_finals.append(pf)
         pyramid_upsamples.append(pu)
 
@@ -178,7 +230,8 @@ def __create_pyramid_features(backbone_names, backbone_features, feature_size=25
     F = backbone_features[0]
     level = int(re.findall(r'\d+', N)[0]) + 1
     P_minus_2_name = 'P' + str(level)
-    P_minus_2 = Conv2D(feature_size, kernel_size=3, strides=2, padding='same', name=P_minus_2_name)(F)
+    P_minus_2 = Conv2D(feature_size, kernel_size=3, strides=2,
+                       padding='same', name=P_minus_2_name)(F)
     pyramid_names.insert(0, P_minus_2_name)
     pyramid_finals.insert(0, P_minus_2)
 
@@ -186,7 +239,8 @@ def __create_pyramid_features(backbone_names, backbone_features, feature_size=25
     level = int(re.findall(r'\d+', N)[0]) + 2
     P_minus_1_name = 'P' + str(level)
     P_minus_1 = Activation('relu', name=N+'_relu')(P_minus_2)
-    P_minus_1= Conv2D(feature_size, kernel_size=3, strides=2, padding='same', name=P_minus_1_name)(P_minus_1)
+    P_minus_1 = Conv2D(feature_size, kernel_size=3, strides=2,
+                       padding='same', name=P_minus_1_name)(P_minus_1)
     pyramid_names.insert(0, P_minus_1_name)
     pyramid_finals.insert(0, P_minus_1)
 
@@ -206,49 +260,56 @@ def semantic_upsample(x, n_upsample, n_filters=256, target=None):
     convolutions with a 3x3 filter to remove aliasing effects
 
     Args:
-        x: The input tensor to be upsampled
-        n_upsample: The number of 2x upsamplings
-        n_filters: The number of filters for the 3x3 convolution
-        target: A tensor with the target shape. If included, then
-            the final upsampling layer will reshape to the target
+        x (tensor): The input tensor to be upsampled
+        n_upsample (int): The number of 2x upsamplings
+        n_filters (int, optional): Defaults to 256. The number of filters for the 3x3 convolution
+        target (tensor, optional): Defaults to None. A tensor with the target shape. If included,
+            then the final upsampling layer will reshape to the target
             tensor's size
 
     Returns:
         The upsampled tensor
     """
     for i in range(n_upsample):
-        x = Conv2D(n_filters, (3,3), strides=(1,1), padding='same', data_format='channels_last')(x)
+        x = Conv2D(n_filters, (3, 3), strides=(1, 1),
+                   padding='same', data_format='channels_last')(x)
 
         if i == n_upsample-1 and target is not None:
             x = UpsampleLike()([x, target])
         else:
-            x = UpSampling2D(size=(2,2))(x)
+            x = UpSampling2D(size=(2, 2))(x)
 
     if n_upsample == 0:
-        x = Conv2D(n_filters, (3,3), strides=(1,1), padding='same', data_format='channels_last')(x)
+        x = Conv2D(n_filters, (3, 3), strides=(1, 1),
+                   padding='same', data_format='channels_last')(x)
 
         if target is not None:
-            x =UpsampleLike()([x, target])
+            x = UpsampleLike()([x, target])
 
     return x
 
-def semantic_prediction(semantic_names, semantic_features, target_level=0, input_target=None,
-        n_filters=256, n_dense=256, n_classes=3):
+
+def semantic_prediction(semantic_names,
+                        semantic_features,
+                        target_level=0,
+                        input_target=None,
+                        n_dense=256,
+                        n_classes=3):
     """
     Creates the prediction head from a list of semantic features
 
     Args:
-        semantic_names: A list of the names of the semantic feature layers
-        semantic_features: A list of semantic features
+        semantic_names (list): A list of the names of the semantic feature layers
+        semantic_features (list): A list of semantic features
 
-        NOTE: The semantic_names and semantic features should be in decreasing order
-        e.g. [Q6, Q5, Q4, ...]
+            NOTE: The semantic_names and semantic features should be in decreasing order
+            e.g. [Q6, Q5, Q4, ...]
 
-        target_level: The level we need to reach - performs 2x upsampling
+        target_level (int, optional): Defaults to 0. The level we need to reach - performs 2x upsampling
             until we're at the target level
-        input_target: Tensor with the input image.
-        n_filters: The number of filters for convolution layers
-        n_features: The number of classes to be predicted
+        input_target (tensor, optional): Defaults to None. Tensor with the input image.
+        n_dense (int, optional): Defaults to 256. The number of filters for dense layers
+        n_classes (int, optional): Defaults to 3.  The number of classes to be predicted
 
     Returns:
         The softmax prediction for the semantic segmentation head
@@ -263,16 +324,12 @@ def semantic_prediction(semantic_names, semantic_features, target_level=0, input
     for semantic_feature in semantic_features[1:]:
         semantic_sum = Add()([semantic_sum, semantic_feature])
 
-    #Final upsampling
+    # Final upsampling
     min_level = int(re.findall(r'\d+', semantic_names[-1])[0])
     n_upsample = min_level-target_level
     x = semantic_upsample(semantic_sum, n_upsample, target=input_target)
 
     # Reshape to match input size
-    # if len(input_target) == 3:
-    #     input_target = input_target[:2]
-    # elif len(input_target) == 4:
-    #     input_target = input_target[1:3]
     x = Reshape(target_shape=(input_target.shape[1].value,
                               input_target.shape[2].value,
                               x.shape[-1]))(x)
@@ -282,25 +339,32 @@ def semantic_prediction(semantic_names, semantic_features, target_level=0, input
     x = BatchNormalization(axis=-1)(x)
     x = Activation('relu')(x)
 
-    #Apply tensor product and softmax layer
+    # Apply tensor product and softmax layer
     x = TensorProduct(n_classes)(x)
     x = Softmax(axis=channel_axis)(x)
 
     return x
 
-def __create_semantic_head(pyramid_names, pyramid_features, input_target=None, target_level=2, n_classes=3, n_filters=128):
+
+def __create_semantic_head(pyramid_names,
+                           pyramid_features,
+                           input_target=None,
+                           target_level=2,
+                           n_classes=3,
+                           n_filters=128):
     """
     Creates a semantic head from a feature pyramid network
 
     Args:
-        pyramid_names: A list of the names of the pyramid levels, e.g
+        pyramid_names (list): A list of the names of the pyramid levels, e.g
             ['P3', 'P4', 'P5', 'P6'] in increasing order
-        pyramid_features: A list with the pyramid level tensors in the
+        pyramid_features (list): A list with the pyramid level tensors in the
             same order as pyramid names
-        input_target: Tensor with the input image.
-        target_level: The level we'll seek to up sample to. Level 1 = 1/2^1 size,
+        input_target (tensor, optional): Defaults to None. Tensor with the input image.
+        target_level (int, optional): Defaults to 2. The level we'll seek to up sample to. Level 1 = 1/2^1 size,
             Level 2 = 1/2^2 size, Level 3 = 1/2^3 size, etc.
-        n_filters: The number of filters for the convolutional layer
+        n_classes (int, optional): Defaults to 3.  The number of classes to be predicted
+        n_filters (int, optional): Defaults to 128. The number of filters for the convolutional layer
 
     Returns:
         The semantic segmentation head
@@ -323,13 +387,16 @@ def __create_semantic_head(pyramid_names, pyramid_features, input_target=None, t
         target = semantic_features[-1] if len(semantic_features) > 0 else None
 
         # Use semantic upsample to get semantic map
-        semantic_features.append(semantic_upsample(P, n_upsample, n_filters=n_filters, target=target))
+        semantic_features.append(semantic_upsample(
+            P, n_upsample, n_filters=n_filters, target=target))
         semantic_names.append('Q' + str(level))
 
     # Combine all of the semantic features
-    x = semantic_prediction(semantic_names, semantic_features, n_classes=n_classes, input_target=input_target)
+    x = semantic_prediction(semantic_names, semantic_features,
+                            n_classes=n_classes, input_target=input_target)
 
     return x
+
 
 def FPNet(backbone,
           input_shape,
@@ -345,14 +412,14 @@ def FPNet(backbone,
     Creates a Feature Pyramid Network with a semantic segmentation head
 
     Args:
-        backbone: A name of a supported backbone
-        input_shape: Shape of the input image
-        input: Optional method to pass in preexisting layers
-        norm_method: Normalization method
-        weights: one of `None` (random initialization),
+        backbone (str): A name of a supported backbone from [deepcell, resnet50]
+        input_shape (tuple): Shape of the input image
+        input (keras layer, optional): Defaults to None. Method to pass in preexisting layers
+        norm_method (str, optional): Defaults to 'whole_image'. Normalization method
+        weights (str, optional): Defaults to None. one of `None` (random initialization),
             'imagenet' (pre-training on ImageNet),
             or the path to the weights file to be loaded.
-        pooling: optional pooling mode for feature extraction
+        pooling (str, optional): Defaults to None. optional pooling mode for feature extraction
             when `include_top` is `False`.
             - `None` means that the output of the model will be
                 the 4D tensor output of the
@@ -363,14 +430,16 @@ def FPNet(backbone,
                 the output of the model will be a 2D tensor.
             - `max` means that global max pooling will
                 be applied.
-        required_channels: integer, the required number of channels of the
+        required_channels (int, optional): Defaults to 3. The required number of channels of the
             backbone.  3 is the default for all current backbones.
+        n_classes (int, optional): Defaults to 3.  The number of classes to be predicted
+        name (str, optional): Defaults to 'fpnet'. Name to use for the model.
 
     Returns:
         Model with a feature pyramid network with a semantic segmentation
         head as the output
-
     """
+
     if inputs is None:
         inputs = Input(shape=input_shape)
     # force the channel size for backbone input to be `required_channels`
@@ -400,10 +469,12 @@ def FPNet(backbone,
     fpn_names = fpn_names[0:-1]
     fpn_features = fpn_features[0:-1]
 
-    x = __create_semantic_head(fpn_names, fpn_features, n_classes=n_classes, input_target=inputs, target_level=target_level)
+    x = __create_semantic_head(fpn_names, fpn_features, n_classes=n_classes,
+                               input_target=inputs, target_level=target_level)
 
     # Return model
     return Model(inputs=inputs, outputs=x, name=name)
+
 
 def FPNet_reuse(input_model,
                 backbone,
@@ -415,6 +486,37 @@ def FPNet_reuse(input_model,
                 n_classes=3,
                 name='fpnet_reuse',
                 **kwargs):
+    """
+    Creates a Feature Pyramid Network with a semantic segmentation head
+
+    Args:
+        input_model (keras model): Input model to use to build the new FPNet
+        backbone (str): A name of a supported backbone from [deepcell, resnet50]
+        input_shape (tuple): Shape of the input image
+        norm_method (str, optional): Defaults to 'whole_image'. Normalization method
+        weights (str, optional): Defaults to None. one of `None` (random initialization),
+            'imagenet' (pre-training on ImageNet),
+            or the path to the weights file to be loaded.
+        pooling (str, optional): Defaults to None. optional pooling mode for feature extraction
+            when `include_top` is `False`.
+            - `None` means that the output of the model will be
+                the 4D tensor output of the
+                last convolutional layer.
+            - `avg` means that global average pooling
+                will be applied to the output of the
+                last convolutional layer, and thus
+                the output of the model will be a 2D tensor.
+            - `max` means that global max pooling will
+                be applied.
+        required_channels (int, optional): Defaults to 3. The required number of channels of the
+            backbone.  3 is the default for all current backbones.
+        n_classes (int, optional): Defaults to 3.  The number of classes to be predicted
+        name (str, optional): Defaults to 'fpnet'. Name to use for the model.
+
+    Returns:
+        Model with a feature pyramid network with a semantic segmentation
+        head as the output
+    """
 
     inputs = Input(shape=input_shape)
 
