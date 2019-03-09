@@ -72,7 +72,7 @@ def dc_block(x, n_filters):
     return (x)
 
 
-def dc_model(input_tensor=None, n_filters=32):
+def dc_model(input_tensor=None, weights=None, include_top=False, pooling=None, n_filters=32, n_dense=128, n_classes=3):
     """Construct the deepcell backbone with five convolutional units
 
         input_tensor (tensor): Input tensor to specify input size
@@ -293,6 +293,7 @@ def semantic_prediction(semantic_names,
                         semantic_features,
                         target_level=0,
                         input_target=None,
+                        n_filters=256,
                         n_dense=256,
                         n_classes=3):
     """
