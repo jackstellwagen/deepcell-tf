@@ -75,10 +75,11 @@ setup(
         'tests': ['pytest',
                   'pytest-cov'],
     },
-    cmdclass={'build_ext': BuildExtension},
     license='LICENSE',
     author='David Van Valen',
     author_email='vanvalen@caltech.edu',
-    description='Deep learning for single cell image segmentation',
-    ext_modules=extensions,
+    description='Deep learning for single cell image segmentation'
 )
+
+# cmdclass={'build_ext': BuildExtension},
+# ext_modules=extensions,
