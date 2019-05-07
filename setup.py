@@ -78,8 +78,7 @@ setup(
     license='LICENSE',
     author='David Van Valen',
     author_email='vanvalen@caltech.edu',
-    description='Deep learning for single cell image segmentation'
+    description='Deep learning for single cell image segmentation',
+    cmdclass={'build_ext': BuildExtension},
+    ext_modules=extensions
 )
-
-# cmdclass={'build_ext': BuildExtension},
-# ext_modules=extensions,
