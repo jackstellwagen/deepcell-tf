@@ -474,3 +474,70 @@ def FPNet(backbone,
                                input_target=inputs, target_level=target_level)
 
     return Model(inputs=inputs, outputs=x, name=name)
+
+
+def FPNet_reuse(input_model,
+                backbone,
+                input_shape,
+                norm_method='whole_image',
+                weights=None,
+                pooling=None,
+                required_channels=3,
+                n_classes=3,
+                name='fpnet_reuse',
+                **kwargs):
+    """
+    Creates a Feature Pyramid Network with a semantic segmentation head
+    Args:
+        input_model (keras model): Input model to use to build the new FPNet
+        backbone (str): A name of a supported backbone from [deepcell, resnet50]
+        input_shape (tuple): Shape of the input image
+        norm_method (str, optional): Defaults to 'whole_image'. Normalization method
+        weights (str, optional): Defaults to None. one of `None` (random initialization),
+            'imagenet' (pre-training on ImageNet),
+            or the path to the weights file to be loaded.
+        pooling (str, optional): Defaults to None. optional pooling mode for feature extraction
+            when `include_top` is `False`.
+            - `None` means that the output of the model will be
+                the 4D tensor output of the
+                last convolutional layer.
+            - `avg` means that global average pooling
+                will be applied to the output of the
+                last convolutional layer, and thus
+                the output of the model will be a 2D tensor.
+            - `max` means that global max pooling will
+                be applied.
+        required_channels (int, optional): Defaults to 3. The required number of channels of the
+            backbone.  3 is the default for all current backbones.
+        n_classes (int, optional): Defaults to 3.  The number of classes to be predicted
+        name (str, optional): Defaults to 'fpnet'. Name to use for the model.
+    Returns:
+        Model with a feature pyramid network with a semantic segmentation
+        head as the output
+    """
+
+    inputs = Input(shape=input_shape)
+
+    # Freeze layers of input model
+    for layer in input_model.layers:
+        layer.trainable = False
+
+    # Concatenate output with original input
+    output = input_model(inputs)
+    new_input = Concatenate(axis=-1)([inputs, output])
+    new_input_shape = new_input.get_shape().as_list()[1:]
+
+    # Create new model
+    new_model = FPNet(backbone,
+                      new_input_shape,
+                      input=new_input,
+                      norm_method=norm_method,
+                      weights=weights,
+                      pooling=pooling,
+                      required_channels=required_channels,
+                      n_classes=n_classes,
+                      name=name,
+                      **kwargs)
+
+    new_output = new_model(new_input)
+    return Model(inputs=inputs, outputs=new_output, name=name)
