@@ -1,6 +1,6 @@
-# Copyright 2016-2018 David Van Valen at California Institute of Technology
-# (Caltech), with support from the Paul Allen Family Foundation, Google,
-# & National Institutes of Health (NIH) under Grant U24CA224309-01.
+# Copyright 2016-2019 The Van Valen Lab at the California Institute of
+# Technology (Caltech), with support from the Paul Allen Family Foundation,
+# Google, & National Institutes of Health (NIH) under Grant U24CA224309-01.
 # All rights reserved.
 #
 # Licensed under a modified Apache License, Version 2.0 (the "License");
@@ -52,6 +52,8 @@ ALL_LOSSES = [
     losses.weighted_categorical_crossentropy,
     losses.sample_categorical_crossentropy,
     losses.weighted_focal_loss,
+    losses.smooth_l1,
+    losses.focal,
     # losses.dice_coef_loss,
     # losses.discriminative_instance_loss
 ]

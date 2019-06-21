@@ -1,6 +1,6 @@
-# Copyright 2016-2018 David Van Valen at California Institute of Technology
-# (Caltech), with support from the Paul Allen Family Foundation, Google,
-# & National Institutes of Health (NIH) under Grant U24CA224309-01.
+# Copyright 2016-2019 The Van Valen Lab at the California Institute of
+# Technology (Caltech), with support from the Paul Allen Family Foundation,
+# Google, & National Institutes of Health (NIH) under Grant U24CA224309-01.
 # All rights reserved.
 #
 # Licensed under a modified Apache License, Version 2.0 (the "License");
@@ -23,9 +23,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Miscellaneous utility functions
-@author: David Van Valen
-"""
+"""Miscellaneous utility functions"""
+
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import division
@@ -37,3 +36,15 @@ def sorted_nicely(l):
     convert = lambda text: int(text) if text.isdigit() else text
     alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)]
     return sorted(l, key=alphanum_key)
+
+
+def get_sorted_keys(dict_to_sort):
+    """Gets the keys from a dict and sorts them in ascending order.
+    Assumes keys are of the form Ni, where N is a letter and i is an integer.
+
+    Args:
+        dict_to_sort: dict whose keys need sorting
+    """
+    sorted_keys = list(dict_to_sort.keys())
+    sorted_keys.sort(key=lambda x: int(x[1:]))
+    return sorted_keys

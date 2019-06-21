@@ -1,6 +1,6 @@
-# Copyright 2016-2018 David Van Valen at California Institute of Technology
-# (Caltech), with support from the Paul Allen Family Foundation, Google,
-# & National Institutes of Health (NIH) under Grant U24CA224309-01.
+# Copyright 2016-2019 The Van Valen Lab at the California Institute of
+# Technology (Caltech), with support from the Paul Allen Family Foundation,
+# Google, & National Institutes of Health (NIH) under Grant U24CA224309-01.
 # All rights reserved.
 #
 # Licensed under a modified Apache License, Version 2.0 (the "License");
@@ -34,6 +34,9 @@ from deepcell.layers.pooling import *
 from deepcell.layers.resize import *
 from deepcell.layers.tensor_product import *
 from deepcell.layers.padding import *
+from deepcell.layers.filter_detections import *
+from deepcell.layers.retinanet import *
+from deepcell.layers.upsample import *
 
 del absolute_import
 del division

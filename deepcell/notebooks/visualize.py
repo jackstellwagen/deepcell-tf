@@ -1,6 +1,6 @@
-# Copyright 2016-2018 David Van Valen at California Institute of Technology
-# (Caltech), with support from the Paul Allen Family Foundation, Google,
-# & National Institutes of Health (NIH) under Grant U24CA224309-01.
+# Copyright 2016-2019 The Van Valen Lab at the California Institute of
+# Technology (Caltech), with support from the Paul Allen Family Foundation,
+# Google, & National Institutes of Health (NIH) under Grant U24CA224309-01.
 # All rights reserved.
 #
 # Licensed under a modified Apache License, Version 2.0 (the "License");
@@ -23,9 +23,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Automatically generate a notebook for analyzing predicted images
-@author: andrewqho, willgraf
-"""
+"""Automatically generate Jupyter notebooks for analyzing segmented images"""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -42,11 +40,15 @@ import nbformat as nbf
 # Create Visual Notebook
 def make_notebook(model_output,
                   output_dir=os.path.join('scripts', 'generated_notebooks')):
-    """Create a visualization notebook that will help visualize
-    the output of a deep learning model
-    # Arguments:
+    """Create a notebook that will help visualize the output of a
+    deep learning model.
+
+    Args:
         model_output: output of a deep learning model to visualize
         output_dir: directory to save the notebook
+
+    Returns:
+        path to the generated notebook
     """
     # validate inputs
     if not os.path.isfile(model_output):
@@ -89,4 +91,8 @@ def make_notebook(model_output,
     nb = nbf.v4.new_notebook(cells=cells)
     ts = time.time()
     st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
-    nbf.write(nb, os.path.join(output_dir, 'visualize_{}.ipynb'.format(st)))
+    notebook_path = os.path.join(output_dir, 'visualize_{}.ipynb'.format(st))
+    # spaces in filenames can be complicated
+    notebook_path = notebook_path.replace(' ', '_')
+    nbf.write(nb, notebook_path)
+    return notebook_path

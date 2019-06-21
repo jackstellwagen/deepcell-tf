@@ -1,6 +1,6 @@
-# Copyright 2016-2018 David Van Valen at California Institute of Technology
-# (Caltech), with support from the Paul Allen Family Foundation, Google,
-# & National Institutes of Health (NIH) under Grant U24CA224309-01.
+# Copyright 2016-2019 The Van Valen Lab at the California Institute of
+# Technology (Caltech), with support from the Paul Allen Family Foundation,
+# Google, & National Institutes of Health (NIH) under Grant U24CA224309-01.
 # All rights reserved.
 #
 # Licensed under a modified Apache License, Version 2.0 (the "License");
@@ -23,9 +23,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Layers to encode location data
-@author: David Van Valen
-"""
+"""Layers to encode location data"""
+
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import division
@@ -45,7 +44,6 @@ class DilatedMaxPool2D(Layer):
     def __init__(self, pool_size=(2, 2), strides=None, dilation_rate=1,
                  padding='valid', data_format=None, **kwargs):
         super(DilatedMaxPool2D, self).__init__(**kwargs)
-        data_format = conv_utils.normalize_data_format(data_format)
         if dilation_rate != 1:
             strides = (1, 1)
         elif strides is None:
@@ -66,11 +64,22 @@ class DilatedMaxPool2D(Layer):
             rows = input_shape[1]
             cols = input_shape[2]
 
-        rows = conv_utils.conv_output_length(rows, self.pool_size[0], padding=self.padding,
-                                             stride=self.strides[0], dilation=self.dilation_rate)
+        # TODO: workaround! padding = 'same' shapes do not match
+        _padding = self.padding
+        self.padding = 'valid'
 
-        cols = conv_utils.conv_output_length(cols, self.pool_size[1], padding=self.padding,
-                                             stride=self.strides[1], dilation=self.dilation_rate)
+        rows = conv_utils.conv_output_length(rows, self.pool_size[0],
+                                             padding=self.padding,
+                                             stride=self.strides[0],
+                                             dilation=self.dilation_rate)
+
+        cols = conv_utils.conv_output_length(cols, self.pool_size[1],
+                                             padding=self.padding,
+                                             stride=self.strides[1],
+                                             dilation=self.dilation_rate)
+
+        # END workaround
+        self.padding = _padding
 
         if self.data_format == 'channels_first':
             output_shape = (input_shape[0], input_shape[1], rows, cols)
@@ -80,23 +89,62 @@ class DilatedMaxPool2D(Layer):
         return tensor_shape.TensorShape(output_shape)
 
     def call(self, inputs):
-        # dilated pooling for tensorflow backend
-        if K.backend() == 'theano':
-            Exception('This version of DeepCell only works with the tensorflow backend')
+        if self.data_format == 'channels_first':
+            inputs = K.permute_dimensions(inputs, pattern=[0, 2, 3, 1])
 
-        df = 'NCHW' if self.data_format == 'channels_first' else 'NHWC'
+        dilation_rate = conv_utils.normalize_tuple(
+            self.dilation_rate, 2, 'dilation_rate')
 
-        padding_input = self.padding.upper()
-        if not isinstance(self.dilation_rate, tuple):
-            dilation_rate = (self.dilation_rate, self.dilation_rate)
-        else:
-            dilation_rate = self.dilation_rate
+        if self.padding == 'valid':
+            outputs = tf.nn.pool(inputs,
+                                 window_shape=self.pool_size,
+                                 pooling_type='MAX',
+                                 padding=self.padding.upper(),
+                                 dilation_rate=dilation_rate,
+                                 strides=self.strides,
+                                 data_format='NHWC')
 
-        output = tf.nn.pool(inputs, window_shape=self.pool_size, pooling_type='MAX',
-                            padding=padding_input, dilation_rate=dilation_rate,
-                            strides=self.strides, data_format=df)
+        elif self.padding == 'same':
+            input_shape = K.int_shape(inputs)
+            rows = input_shape[1]
+            cols = input_shape[2]
 
-        return output
+            rows_unpadded = conv_utils.conv_output_length(
+                rows, self.pool_size[0],
+                padding='valid',
+                stride=self.strides[0],
+                dilation=self.dilation_rate)
+
+            cols_unpadded = conv_utils.conv_output_length(
+                cols, self.pool_size[1],
+                padding='valid',
+                stride=self.strides[1],
+                dilation=self.dilation_rate)
+
+            w_pad = (rows - rows_unpadded) // 2
+            h_pad = (cols - cols_unpadded) // 2
+
+            w_pad = (w_pad, w_pad)
+            h_pad = (h_pad, h_pad)
+
+            pattern = [[0, 0], list(w_pad), list(h_pad), [0, 0]]
+
+            # Pad the image
+            outputs = tf.pad(inputs, pattern, mode='REFLECT')
+
+            # Perform pooling
+            outputs = tf.nn.pool(inputs,
+                                 window_shape=self.pool_size,
+                                 pooling_type='MAX',
+                                 padding='VALID',
+                                 dilation_rate=dilation_rate,
+                                 strides=self.strides,
+                                 data_format='NHWC')
+
+        if self.data_format == 'channels_first':
+            outputs = K.permute_dimensions(outputs, pattern=[0, 3, 1, 2])
+
+        return outputs
 
     def get_config(self):
         config = {
@@ -111,7 +159,7 @@ class DilatedMaxPool2D(Layer):
 
 
 class DilatedMaxPool3D(Layer):
-    def __init__(self, pool_size=(2, 2), strides=None, dilation_rate=1,
+    def __init__(self, pool_size=(1, 2, 2), strides=None, dilation_rate=1,
                  padding='valid', data_format=None, **kwargs):
         super(DilatedMaxPool3D, self).__init__(**kwargs)
         data_format = conv_utils.normalize_data_format(data_format)
@@ -136,40 +184,101 @@ class DilatedMaxPool3D(Layer):
             rows = input_shape[2]
             cols = input_shape[3]
 
-        time = conv_utils.conv_output_length(time, self.pool_size[0], padding=self.padding,
-                                             stride=self.strides[0], dilation=self.dilation_rate)
+        # TODO: workaround! padding = 'same' shapes do not match
+        _padding = self.padding
+        self.padding = 'valid'
 
-        rows = conv_utils.conv_output_length(rows, self.pool_size[1], padding=self.padding,
-                                             stride=self.strides[1], dilation=self.dilation_rate)
+        time = conv_utils.conv_output_length(time, self.pool_size[0],
+                                             padding=self.padding,
+                                             stride=self.strides[0],
+                                             dilation=self.dilation_rate)
 
-        cols = conv_utils.conv_output_length(cols, self.pool_size[2], padding=self.padding,
-                                             stride=self.strides[2], dilation=self.dilation_rate)
+        rows = conv_utils.conv_output_length(rows, self.pool_size[1],
+                                             padding=self.padding,
+                                             stride=self.strides[1],
+                                             dilation=self.dilation_rate)
+
+        cols = conv_utils.conv_output_length(cols, self.pool_size[2],
+                                             padding=self.padding,
+                                             stride=self.strides[2],
+                                             dilation=self.dilation_rate)
+
+        # END workaround
+        self.padding = _padding
 
         if self.data_format == 'channels_first':
             output_shape = (input_shape[0], input_shape[1], time, rows, cols)
         else:
             output_shape = (input_shape[0], time, rows, cols, input_shape[4])
 
-        return output_shape
+        return tensor_shape.TensorShape(output_shape)
 
     def call(self, inputs):
-        # dilated pooling for tensorflow backend
-        if K.backend() == 'theano':
-            Exception('This version of DeepCell only works with the tensorflow backend')
-
-        df = 'NCDHW' if self.data_format == 'channels_first' else 'NDHWC'
+        if self.data_format == 'channels_first':
+            inputs = K.permute_dimensions(inputs, pattern=[0, 2, 3, 4, 1])
 
         padding_input = self.padding.upper()
-        if not isinstance(self.dilation_rate, tuple):
-            dilation_rate = (self.dilation_rate, self.dilation_rate, self.dilation_rate)
-        else:
-            dilation_rate = self.dilation_rate
+        dilation_rate = conv_utils.normalize_tuple(
+            self.dilation_rate, 3, 'dilation_rate')
 
-        output = tf.nn.pool(inputs, window_shape=self.pool_size, pooling_type='MAX',
-                            padding=padding_input, dilation_rate=dilation_rate,
-                            strides=self.strides, data_format=df)
+        if self.padding == 'valid':
+            outputs = tf.nn.pool(inputs,
+                                 window_shape=self.pool_size,
+                                 pooling_type='MAX',
+                                 padding=padding_input,
+                                 dilation_rate=dilation_rate,
+                                 strides=self.strides,
+                                 data_format='NDHWC')
+        elif self.padding == 'same':
+            input_shape = K.int_shape(inputs)
+            times = input_shape[1]
+            rows = input_shape[2]
+            cols = input_shape[3]
 
-        return output
+            times_unpadded = conv_utils.conv_output_length(
+                times, self.pool_size[0],
+                padding='valid',
+                stride=self.strides[0],
+                dilation=self.dilation_rate)
+
+            rows_unpadded = conv_utils.conv_output_length(
+                rows, self.pool_size[1],
+                padding='valid',
+                stride=self.strides[0],
+                dilation=self.dilation_rate)
+
+            cols_unpadded = conv_utils.conv_output_length(
+                cols, self.pool_size[2],
+                padding='valid',
+                stride=self.strides[1],
+                dilation=self.dilation_rate)
+
+            t_pad = (times - times_unpadded) // 2
+            w_pad = (rows - rows_unpadded) // 2
+            h_pad = (cols - cols_unpadded) // 2
+
+            t_pad = (t_pad, t_pad)
+            w_pad = (w_pad, w_pad)
+            h_pad = (h_pad, h_pad)
+
+            pattern = [[0, 0], list(t_pad), list(w_pad), list(h_pad), [0, 0]]
+
+            # Pad the image
+            outputs = tf.pad(inputs, pattern, mode='REFLECT')
+
+            # Perform pooling
+            outputs = tf.nn.pool(inputs,
+                                 window_shape=self.pool_size,
+                                 pooling_type='MAX',
+                                 padding='VALID',
+                                 dilation_rate=dilation_rate,
+                                 strides=self.strides,
+                                 data_format='NDHWC')
+
+        if self.data_format == 'channels_first':
+            outputs = K.permute_dimensions(outputs, pattern=[0, 4, 1, 2, 3])
+
+        return outputs
 
     def get_config(self):
         config = {
