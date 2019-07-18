@@ -82,9 +82,9 @@ class DilatedMaxPool2D(Layer):
         self.padding = _padding
 
         if self.data_format == 'channels_first':
-            output_shape = (input_shape[0], input_shape[1], rows, cols)
+            output_shape = [input_shape[0], input_shape[1], rows, cols]
         else:
-            output_shape = (input_shape[0], rows, cols, input_shape[3])
+            output_shape = [input_shape[0], rows, cols, input_shape[3]]
 
         return tensor_shape.TensorShape(output_shape)
 

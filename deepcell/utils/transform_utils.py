@@ -38,7 +38,7 @@ from skimage.morphology import binary_erosion, binary_dilation
 from tensorflow.python.keras import backend as K
 
 
-def deepcell_transform(mask, dilation_radius=None, data_format=None):
+def deepcell_transform(mask, include_cell_edge=False, dilation_radius=None, data_format=None):
     """Transforms a label mask for a z stack edge, interior, and background
 
     Args:
@@ -101,12 +101,19 @@ def deepcell_transform(mask, dilation_radius=None, data_format=None):
     background = (1 - background_edges - interior_edges - interiors > 0)
     background = background.astype('int')
 
-    all_stacks = [
-        background_edges,
-        interior_edges,
-        interiors,
-        background
-    ]
+    if include_cell_edge:
+        all_stacks = [
+            background_edges,
+            interior_edges,
+            interiors,
+            background
+        ]
+    else:
+        all_stacks = [
+            background_edges + interior_edges,
+            interiors,
+            background
+        ]
 
     deepcell_stacks = np.stack(all_stacks, axis=channel_axis)
     return deepcell_stacks
