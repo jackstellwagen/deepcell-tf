@@ -38,17 +38,19 @@ from skimage.morphology import binary_erosion, binary_dilation
 from tensorflow.python.keras import backend as K
 
 
-def deepcell_transform(mask, include_cell_edge=False, dilation_radius=None, data_format=None):
+def deepcell_transform(mask, dilation_radius=None, data_format=None,
+                       separate_edge_classes=False):
     """Transforms a label mask for a z stack edge, interior, and background
-
     Args:
         mask: tensor of labels
         dilation_radius:  width to enlarge the edge feature of each instance
         data_format: `channels_first` or `channels_last`
-
+        separate_edge_classes: boolean, whether to separate the cell edge class
+            into 2 distinct cell-cell edge and cell-background edge classes.
     Returns:
         one-hot encoded tensor of masks:
-            [cell_background_edge, cell_cell_edge, cell_interior, background]
+            if not separate_edge_classes: [cell_edge, cell_interior, background]
+            otherwise: [bg_cell_edge, cell_cell_edge, cell_interior, background]
     """
     if data_format is None:
         data_format = K.image_data_format()
@@ -76,6 +78,28 @@ def deepcell_transform(mask, include_cell_edge=False, dilation_radius=None, data
     edges = (mask - interiors > 0).astype('int')
     interiors = (interiors > 0).astype('int')
 
+    if not separate_edge_classes:
+        if dilation_radius:
+            dil_strel = ball(dilation_radius) if mask.ndim > 3 else disk(dilation_radius)
+            # Thicken cell edges to be more pronounced
+            for i in range(edges.shape[0]):
+                edges[i] = binary_dilation(edges[i], selem=dil_strel)
+
+            # Thin the augmented edges by subtracting the interior features.
+            edges = (edges - interiors > 0).astype('int')
+
+        background = (1 - edges - interiors > 0)
+        background = background.astype('int')
+
+        all_stacks = [
+            edges,
+            interiors,
+            background
+        ]
+
+        deepcell_stacks = np.stack(all_stacks, axis=channel_axis)
+        return deepcell_stacks
+
     # dilate the background masks and subtract from all edges for background-edges
     dilated_background = np.zeros(mask.shape)
     for i in range(mask.shape[0]):
@@ -101,19 +125,12 @@ def deepcell_transform(mask, include_cell_edge=False, dilation_radius=None, data
     background = (1 - background_edges - interior_edges - interiors > 0)
     background = background.astype('int')
 
-    if include_cell_edge:
-        all_stacks = [
-            background_edges,
-            interior_edges,
-            interiors,
-            background
-        ]
-    else:
-        all_stacks = [
-            background_edges + interior_edges,
-            interiors,
-            background
-        ]
+    all_stacks = [
+        background_edges,
+        interior_edges,
+        interiors,
+        background
+    ]
 
     deepcell_stacks = np.stack(all_stacks, axis=channel_axis)
     return deepcell_stacks
