@@ -189,7 +189,7 @@ def get_backbone(backbone, input_tensor, use_imagenet=False, return_dict=True, *
     vgg_backbones = ['vgg16', 'vgg19']
     densenet_backbones = ['densenet121', 'densenet169', 'densenet201']
     mobilenet_backbones = ['mobilenet', 'mobilenetv2', 'mobilenet_v2']
-    resnet_backbones = ['resnet50']
+    resnet_backbones = ['resnet50', 'resnet101']
     nasnet_backbones = ['nasnet_large', 'nasnet_mobile']
 
     # TODO: Check and make sure **kwargs is in the right format.
@@ -275,16 +275,26 @@ def get_backbone(backbone, input_tensor, use_imagenet=False, return_dict=True, *
             return model
 
     elif _backbone in resnet_backbones:
-        model = applications.ResNet50(input_tensor=input_tensor, **kwargs)
+        if _backbone == 'resnet50':
+            model = applications.ResNet50(input_tensor=input_tensor, **kwargs)
+        elif _backbone == 'resnet101':
+            model = applications.ResNet101(input_tensor=input_tensor, **kwargs)
 
         # Set the weights of the model if requested
         if use_imagenet:
-            model_with_weights = applications.ResNet50(**kwargs_with_weights)
+            if _backbone == 'resnet50':
+                model_with_weights = applications.ResNet50(**kwargs_with_weights)
+            elif _backbone == 'resnet101':
+                model_with_weights = applications.ResNet101(**kwargs_with_weights)
             model_with_weights.save_weights('model_weights.h5')
             model.load_weights('model_weights.h5', by_name=True)
 
-        layer_names = ['bn_conv1', 'res2c_branch2c', 'res3d_branch2c',
-                       'res4f_branch2c', 'res5c_branch2c']
+        if _backbone == 'resnet50':
+            layer_names = ['conv1_relu', 'conv2_block3_out', 'conv3_block4_out',
+                       'conv4_block6_out', 'conv5_block3_out']
+        elif _backbone == 'resnet101':
+            layer_names = ['conv1_relu', 'conv2_block3_out', 'conv3_block4_out',
+                       'conv4_block23_out', 'conv5_block3_out']
 
         layer_outputs = [model.get_layer(name=layer_name).output for layer_name in layer_names]
 
