@@ -4,11 +4,29 @@ import matplotlib.pyplot as plt
 import imageio
 from matplotlib.transforms import Bbox
 import cv2
+import csv
+
+
+
+"""
+This program outputs a graph of the asters area over time as well as saving it to a csv.
+
+the make_movie() function saves a movie that has the outline of the region used for the area tracking
+
+
+
+"""
 
 
 movie_dir = "/Users/jackstellwagen/Desktop/FeatureNet_results/200um_preliminary/"
 movie_name = "200_AR_0.75_annotated.avi"
 outlined_movie_name = "200_AR_0.75_outlined.avi"
+csv_name = "200_AR_0.75.csv"
+
+
+
+
+
 
 cap = cv2.VideoCapture(movie_dir + movie_name)
 frameWidth = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -90,11 +108,19 @@ def make_movie(dir, movie, destination):
     video.release()
 
 
+def write_csv(areas):
+    with open(movie_dir + csv_name, 'w', newline='') as file:
+         wr = csv.writer(file, quoting=csv.QUOTE_ALL)
+         wr.writerow(areas)
+
+
 
 
 
 
 
 if __name__ == '__main__':
-    plot_area(track_area(movie_dir, movie_name))
+    area = track_area(movie_dir, movie_name)
+    plot_area(area)
+    write_csv(area)
     make_movie(movie_dir, movie_name, outlined_movie_name)
