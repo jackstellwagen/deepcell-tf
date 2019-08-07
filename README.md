@@ -113,7 +113,7 @@ nvidia-docker build -t [your_username]/deepcell-tf:latest .
 Run the docker image with the folder "aster_segmentation" as a mounted volume
 
 ```bash
-nvidia-docker run -it -p 8888:8888 -v aster_segmentation:/notebooks/aster_segmentation [your_username]/deepcell-tf:latest bash
+nvidia-docker run -it -p 8888:8888 -v [absolute_path_of_aster_segmentation]:/notebooks/aster_segmentation [your_username]/deepcell-tf:latest bash
 ```
 
 Within the docker bash shell, launch the jupyter notebook
@@ -126,7 +126,7 @@ If the notebook is being run on a remote ssh server, run the following command o
 ```bash
   ssh -N -f -L localhost:8888:localhost:8888 [user_name]@[ip_address]
 ```
-
+Go to the URL "http://localhost:8888" and navagate to the ipython notebook
 
 
 
