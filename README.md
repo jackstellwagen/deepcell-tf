@@ -122,7 +122,7 @@ Within the docker bash shell, launch the jupyter notebook
 jupyter notebook --no-browser --port=8888 --allow-root --ip=0.0.0.0
 ```
 
-If the notebook is being run on a remote ssh server, portforward your local machine to the jupyter notebook's port on the remote machine using the following on the local machine
+If the notebook is being run on a remote ssh server, run the following command on the local machine to portforward 
 ```bash
   ssh -N -f -L localhost:8888:localhost:8888 [user_name]@[ip_address]
 ```
