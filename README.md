@@ -94,6 +94,42 @@ NV_GPU='0' nvidia-docker run -it \
   $USER/deepcell-tf:latest
 ```
 
+# DeepCell: Deep Learning for Aster Image Segmentation
+## Thomson Lab Instructions
+
+
+Clone the repository
+ ```bash
+ git clone https://github.com/jackstellwagen/deepcell-tf.git
+  ```
+Download nvidia-docker
+
+Build the docker image
+
+```bash
+nvidia-docker build -t [your_username]/deepcell-tf:latest .
+```
+
+Run the docker image with the folder "aster_segmentation" as a mounted volume
+
+```bash
+nvidia-docker run -it -p 8888:8888 -v aster_segmentation:/notebooks/aster_segmentation [your_username]/deepcell-tf:latest bash
+```
+
+Within the docker bash shell, launch the jupyter notebook
+
+```bash
+jupyter notebook --no-browser --port=8888 --allow-root --ip=0.0.0.0
+```
+
+If the notebook is being run on a remote ssh server, portforward your local machine to the jupyter notebook's port on the remote machine using the following on the local machine
+```bash
+  ssh -N -f -L localhost:8888:localhost:8888 [user_name]@[ip_address]
+```
+
+
+
+
 ## Copyright
 
 Copyright © 2016-2019 [The Van Valen Lab](http://www.vanvalen.caltech.edu/) at the California Institute of Technology (Caltech), with support from the Paul Allen Family Foundation, Google, & National Institutes of Health (NIH) under Grant U24CA224309-01.  
