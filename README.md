@@ -102,9 +102,9 @@ Clone the repository
  ```bash
  git clone https://github.com/jackstellwagen/deepcell-tf.git
   ```
-Download nvidia-docker
+Download nvidia-docker, instructions should be here: https://github.com/NVIDIA/nvidia-docker
 
-Build the docker image
+Build the docker image (in the deepcell-tf directory)
 
 ```bash
 nvidia-docker build -t [your_username]/deepcell-tf:latest .
@@ -126,7 +126,7 @@ If the notebook is being run on a remote ssh server, run the following command o
 ```bash
   ssh -N -f -L localhost:8888:localhost:8888 [user_name]@[ip_address]
 ```
-Go to the URL "http://localhost:8888" and navagate to the ipython notebook
+Go to the URL "http://localhost:8888" and navagate to the ipython notebook in Aster_segmentation/notebooks
 
 
 
